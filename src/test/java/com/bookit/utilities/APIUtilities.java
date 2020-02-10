@@ -11,7 +11,7 @@ import java.util.Map;
 import static io.restassured.RestAssured.*;
 
 public class APIUtilities {
-    private static String URI = ConfigurationReader.getProperty("bookit.api.qa1");
+    private static String URI = Environment.BASE_URI;
 
     /**
      * Method that generates access token
@@ -20,8 +20,8 @@ public class APIUtilities {
      */
     public static String getToken() {
         Response response = given().
-                queryParam("email", ConfigurationReader.getProperty("team.leader.email")).
-                queryParam("password", ConfigurationReader.getProperty("team.leader.password")).
+                queryParam("email", Environment.LEADER_USERNAME).
+                queryParam("password", Environment.LEADER_PASSWORD).
                 when().
                 get("/sign").prettyPeek();
         return response.jsonPath().getString("accessToken");
@@ -36,14 +36,14 @@ public class APIUtilities {
         String userName = "";
         String password = "";
         if (role.toLowerCase().contains("lead")) {
-            userName = ConfigurationReader.getProperty("team.leader.email");
-            password = ConfigurationReader.getProperty("team.leader.password");
+            userName = Environment.LEADER_USERNAME;
+            password = Environment.LEADER_PASSWORD;
         } else if (role.toLowerCase().contains("teacher")) {
-            userName = ConfigurationReader.getProperty("teacher.email");
-            password = ConfigurationReader.getProperty("teacher.password");
+            userName = Environment.TEACHER_USERNAME;
+            password = Environment.TEACHER_PASSWORD;
         } else if (role.toLowerCase().contains("member")) {
-            userName = ConfigurationReader.getProperty("team.member.email");
-            password = ConfigurationReader.getProperty("team.member.password");
+            userName = Environment.MEMBER_USERNAME;
+            password = Environment.MEMBER_PASSWORD;
         } else {
             throw new RuntimeException("Invalid user type!");
         }
@@ -55,6 +55,25 @@ public class APIUtilities {
         return response.jsonPath().getString("accessToken");
     }
 
+    /**
+     * Delete user based on email and password
+     * @param email
+     * @param password
+     * @return response
+     */
+    public static Response deleteMe(String email, String password) {
+        String token = given().
+                queryParam("email", email).
+                queryParam("password", password).
+                when().
+                get("/sign").prettyPeek().jsonPath().getString("accessToken");
+        int userToDelete = given().auth().oauth2(token).
+                when().
+                get("/api/users/me").jsonPath().getInt("id");
+        Response response = given().auth().oauth2(getToken("teacher")).delete(Endpoints.DELETE_STUDENT, userToDelete);
+        response.prettyPeek();
+        return response;
+    }
 
     /**
      * Method to find duplicates in the list of objects. Override equals method for your custom class and provide strategy of equality.
